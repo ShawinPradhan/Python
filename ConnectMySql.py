@@ -1,5 +1,6 @@
 import mysql.connector as mc
 
+#function to add user details into the database
 def add():
     try:
         con=mc.connect(host="localhost",\
@@ -17,7 +18,8 @@ def add():
     except:
         con.rollback()
         print("Error Found")
-        
+
+#function to display all the details of the users present
 def display():
     con=mc.connect(host="localhost",\
 
@@ -29,6 +31,7 @@ def display():
         print(i)
     con.close()
 
+#function to update a user details using the id
 def update():
     try:
         con=mc.connect(host="localhost",\
@@ -48,6 +51,7 @@ def update():
         con.rollback()
         print("Error Found")
 
+#function to delete the user details using the user_id
 def delete(user_id):
     try:
         con=mc.connect(host="localhost",\
@@ -63,7 +67,7 @@ def delete(user_id):
         con.rollback()
         print("Error Found")
     
-
+#main function 
 def main():
     print("1. For Insert record")
     print("2. For Display All Record")
