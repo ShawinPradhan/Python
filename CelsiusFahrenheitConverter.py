@@ -1,4 +1,4 @@
-
+#Program to convert Celsius to Fahrenheit and vice versa
 
 while True:
     try:
@@ -7,24 +7,28 @@ while True:
         print("2) Farenheit to Celsius")
         print("3) Exit")
        
-        value = int(input("Enter the choice: "))
-        
-        if value==1:
+        choice = int(input("Enter the choice: "))
+
+        #if choice is 1 then we are converting from celsius to fahrenheit
+        if choice==1:
             celsius = float(input("Enter celsius degree: "))
             fahrenheit = celsius * 9/5 + 32
             print(f"{celsius}°C is equal to {fahrenheit}°F")
 
-        elif value ==2:
+        #if choice is 2 then we are converting from fahrenheit to celsius
+        elif choice ==2:
             fahrenheit = float(input("Enter fahrenheit degree: "))
             celsius = (fahrenheit-32) * 5/9
             print(f"{fahrenheit}°F is equal to {celsius}°C")
 
-        elif value ==3:
+        #if choice is 3 then breaking out of the loop
+        elif choice ==3:
             break
 
         else:
             print("Invalid choice")
 
+    #handling the exception ValueError
     except ValueError:
         print("Please enter a valid value")
 
