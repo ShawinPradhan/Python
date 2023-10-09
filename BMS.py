@@ -27,7 +27,7 @@ cursor.execute("""
 conn.commit()
 
 def create_account(first_name, last_name, initial_balance, email, aadhaar_no, pan_card):
-    # Generate a unique account number (you can implement this differently)
+    # Generate a unique account number
     bank_name = "HDFC"
     account_number = f"{bank_name}{hash(bank_name) % 10000}"
     # Insert a new account into the database
