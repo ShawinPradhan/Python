@@ -1,4 +1,3 @@
-#pip install mysql-connector-python
 import mysql.connector
 
 # Connect to MySQL
@@ -26,8 +25,9 @@ cursor.execute("""
 )
 conn.commit()
 
+#function to create account
 def create_account(first_name, last_name, initial_balance, email, aadhaar_no, pan_card):
-    # Generate a unique account number
+    # Generate a unique account number (you can implement this differently)
     bank_name = "HDFC"
     account_number = f"{bank_name}{hash(bank_name) % 10000}"
     # Insert a new account into the database
@@ -38,6 +38,7 @@ def create_account(first_name, last_name, initial_balance, email, aadhaar_no, pa
     conn.commit()
     print(f"Account created successfully. Your account number is: {account_number}")
 
+#function to deposit amount into the account
 def deposit(account_number, amount):
     # Update the balance by depositing money into the account
     cursor.execute("""
@@ -48,6 +49,12 @@ def deposit(account_number, amount):
     conn.commit()
     print("Deposit successful!")
 
+    # Retrieve and display the updated account balance
+    cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
+    balance = cursor.fetchone()[0]
+    print(f"Updated account balance: Rs.{balance:.2f}")
+
+#function to withdraw amount from the account
 def withdraw(account_number, amount):
     # Check if there's enough balance before withdrawing
     cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
@@ -63,11 +70,39 @@ def withdraw(account_number, amount):
     else:
         print("Insufficient balance!")
 
+    # Retrieve and display the updated account balance
+    cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
+    balance = cursor.fetchone()[0]
+    print(f"Updated account balance: Rs.{balance:.2f}")
+
+#function to display account balance
 def display_balance(account_number):
     # Retrieve and display the account balance
     cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
     balance = cursor.fetchone()[0]
     print(f"Account balance: Rs.{balance:.2f}")
+
+# function to display account details
+def account_details(account_number):
+    # Retrieve all the details from the database
+    cursor.execute("""
+        SELECT account_number, first_name, last_name, balance, email, aadhaar_no, pan_card
+        FROM accounts
+        WHERE account_number = %s
+    """, (account_number,))
+    account = cursor.fetchone()
+    if account:
+        account_number, first_name, last_name, balance, email, aadhaar_no, pan_card = account
+        print("Account Details:")
+        print(f"Account Number: {account_number}")
+        print(f"First Name: {first_name}")
+        print(f"Last Name: {last_name}")
+        print(f"Balance: Rs.{balance:.2f}")
+        print(f"Email: {email}")
+        print(f"Aadhaar Number: {aadhaar_no}")
+        print(f"PAN Card: {pan_card}")
+    else:
+        print("Account not found.")
 
 # Main program
 while True:
@@ -76,7 +111,8 @@ while True:
     print("2. Deposit")
     print("3. Withdraw")
     print("4. Check Balance")
-    print("5. Exit")
+    print("5. Account details")
+    print("6. Exit")
 
     choice = input("Enter your choice: ")
 
@@ -118,8 +154,15 @@ while True:
             
         except ValueError:
             print("Invalid Input!! Please enter valid details.")
-        
+
     elif choice == "5":
+        try:
+            account_number = input("Enter account number: ")
+            account_details(account_number)
+        except ValueError:
+            print("Invalid Input!! Please enter a valid account number.")
+        
+    elif choice == "6":
         print("Exiting the program. Goodbye!")
         break
     
@@ -133,62 +176,109 @@ conn.close()
 '''
 OUTPUT:
 
-Banking Management System
-1. Create Account
-2. Deposit
-3. Withdraw
-4. Check Balance
-5. Exit
-Enter your choice: 1
-Enter account holder's first name: Shawin
-Enter account holder's last name: Pradhan
-Enter initial balance: 10000
-Enter email address: shawin@gmail.com
-Enter aadhaar no.: 123412341234
-Enter pan card no.: EJFP000011
-Account created successfully. Your account number is: HDFC5918
 
 Banking Management System
 1. Create Account
 2. Deposit
 3. Withdraw
 4. Check Balance
-5. Exit
+5. Account details
+6. Exit
+Enter your choice: 1
+Enter account holder's first name: John
+Enter account holder's last name: Doe
+Enter initial balance: 25000
+Enter email address: john@gmail.com
+Enter aadhaar no.: 568947125360
+Enter pan card no.: EJFL564892
+Account created successfully. Your account number is: HDFC4211
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Exit
 Enter your choice: 2
-Enter account number: HDFC5918
+Enter account number: HDFC4211
 Enter deposit amount: 5000
 Deposit successful!
+Updated account balance: Rs.30000.00
 
 Banking Management System
 1. Create Account
 2. Deposit
 3. Withdraw
 4. Check Balance
-5. Exit
+5. Account details
+6. Exit
 Enter your choice: 3
-Enter account number: HDFC5918
-Enter withdrawal amount: 2000
+Enter account number: HDFC4211
+Enter withdrawal amount: 3000
 Withdrawal successful!
+Updated account balance: Rs.27000.00
 
 Banking Management System
 1. Create Account
 2. Deposit
 3. Withdraw
 4. Check Balance
-5. Exit
+5. Account details
+6. Exit
 Enter your choice: 4
-Enter account number: HDFC5918
-Account balance: Rs.13000.00
+Enter account number: HDFC4211
+Account balance: Rs.27000.00
 
 Banking Management System
 1. Create Account
 2. Deposit
 3. Withdraw
 4. Check Balance
-5. Exit
+5. Account details
+6. Exit
 Enter your choice: 5
-Exiting the program. Goodbye!
+Enter account number: HDFC4211
+Account Details:
+Account Number: HDFC4211
+First Name: John
+Last Name: Doe
+Balance: Rs.27000.00
+Email: john@gmail.com
+Aadhaar Number: 568947125360
+PAN Card: EJFL564892
 
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Exit
+Enter your choice: 7
+Invalid choice. Please try again.
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Exit
+Enter your choice: 2
+Enter account number: HDFC4211
+Enter deposit amount: as
+Invalid Input!! Please enter valid details.
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Exit
+Enter your choice: 6
+Exiting the program. Goodbye!
 
 
 '''
