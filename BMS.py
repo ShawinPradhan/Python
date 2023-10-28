@@ -1,6 +1,7 @@
 import mysql.connector
 from mysql.connector import IntegrityError  # Import IntegrityError
 import random
+from datetime import datetime
 
 # Connect to MySQL
 conn = mysql.connector.connect(
@@ -37,6 +38,20 @@ cursor.execute("""
     )
 """
 )
+
+#Create table for transactions
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS transactions (
+        transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+        transaction_type VARCHAR(20) NOT NULL,
+        amount DOUBLE(10,2) NOT NULL,
+        transaction_time DATETIME NOT NULL,
+        account_number VARCHAR(20),
+        foreign key(account_number) references accounts(account_number)
+    )
+"""
+)
+
 conn.commit()
 
 #custom exception if account is not present in the system
@@ -55,7 +70,7 @@ class InsufficientBalance(Exception):
 def create_account(first_name, last_name, initial_balance, email, aadhaar_no, pan_card):
         # Generate a unique account number
         bank_name = "HDFC"
-        # account_number = f"{bank_name}{hash(bank_name) % 10000}"
+        #account_number = f"{bank_name}{hash(bank_name) % 10000}"
         number = ''.join(str(random.randint(0, 9)) for _ in range(5))
         account_number = bank_name+number
         
@@ -122,6 +137,14 @@ def deposit(account_number):
         """, (amount, account_number))
         conn.commit()
         print("Deposit successful!")
+
+        insert_query = "INSERT INTO transactions (transaction_type, transaction_time, amount, account_number) VALUES ('DEPOSIT', %s, %s, %s)"
+        current_time = datetime.now()
+
+        data = (current_time,amount,account_number)
+        
+        cursor.execute(insert_query, data)
+        conn.commit()
         
         # Retrieve and display the updated account balance
         cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
@@ -152,8 +175,15 @@ def withdraw(account_number):
                 SET balance = balance - %s
                 WHERE account_number = %s
             """, (amount, account_number))
-            conn.commit()
             print("Withdrawal successful!")
+
+            insert_query = "INSERT INTO transactions (transaction_type, transaction_time, amount, account_number) VALUES ('WITHDRAW', %s, %s, %s)"
+            current_time = datetime.now()
+
+            data = (current_time,amount,account_number)
+        
+            cursor.execute(insert_query, data)
+            conn.commit()
             
             # Retrieve and display the updated account balance
             cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
@@ -232,7 +262,29 @@ def close_account(account_number):
 
     else:
         raise CustomerNotFound(account_number)
-        
+
+# Function to view the last 5 transaction details
+def view_last_5_transactions(account_number):
+    cursor.execute("""
+        SELECT *
+        FROM accounts
+        WHERE account_number = %s and status = 'ACTIVE'
+    """, (account_number,))
+    account = cursor.fetchone()
+    if account:
+        # Query to retrieve the last 5 transactions for a given account number
+        query = "SELECT * FROM transactions WHERE account_number = %s ORDER BY transaction_time DESC LIMIT 5"
+        cursor.execute(query, (account_number,))
+
+        print("Last 5 Transactions for Account Number:", account_number)
+        print("------------------------------------------------")
+
+        for row in cursor.fetchall():
+            transaction_type, amount, transaction_datetime = row[1], row[2], row[3]
+            print(f"Transaction Type: {transaction_type}, Amount: {amount}, Date and Time: {transaction_datetime}")
+
+    else:
+        raise CustomerNotFound(account_number)
 
 # Main program
 while True:
@@ -243,7 +295,8 @@ while True:
     print("4. Check Balance")
     print("5. Account details")
     print("6. Close Account")
-    print("7. Exit")
+    print("7. View Last 5 transactions")
+    print("8. Exit")
 
     choice = input("Enter your choice: ")
 
@@ -319,8 +372,18 @@ while True:
         except CustomerNotFound as e:
             print(e)
             
+    elif choice=="7":
+        try:
+            account_number = input("Enter account number: ")
+            view_last_5_transactions(account_number)
+
+        except ValueError:
+            print("Invalid Input!! Please enter a valid account number.")
+            
+        except CustomerNotFound as e:
+            print(e)
     
-    elif choice == "7":
+    elif choice == "8":
         print("Exiting the program. Goodbye!")
         break
     
@@ -341,7 +404,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 1
 Enter account holder's first name: Dipankar
 Enter account holder's last name: Das
@@ -360,7 +424,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 1
 Enter account holder's first name: Dip
 Enter account holder's last name: Das
@@ -380,7 +445,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: HDFC2282
 Invalid choice. Please try again.
 
@@ -391,7 +457,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 2
 Enter account number: HDFC2282
 Enter deposit amount: 5000
@@ -405,7 +472,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 4
 Enter account number: HDFC2282
 Account balance: Rs.55000.00
@@ -417,7 +485,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 3
 Enter account number: HDFC2282
 Enter withdrawal amount: 60000
@@ -430,7 +499,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 3
 Enter account number: HDFC2282
 Enter withdrawal amount: 4000
@@ -444,7 +514,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 5
 Enter account number: HDFC2282
 Account Details:
@@ -464,7 +535,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 6
 Enter account number: HDFC2282
 Account has been closed!
@@ -476,7 +548,8 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 2
 Enter account number: HDFC2282
 Customer with account number HDFC2282 not found! Please contact the manager.
@@ -488,8 +561,25 @@ Banking Management System
 4. Check Balance
 5. Account details
 6. Close Account
-7. Exit
+7. View Last 5 transactions
+8. Exit
 Enter your choice: 7
+Enter account number: HDFC2282
+Last 5 Transactions for Account Number: HDFC2282
+------------------------------------------------
+Transaction Type: WITHDRAW, Amount: 4000.0, Date and Time: 2023-10-28 13:29:14
+Transaction Type: DEPOSIT, Amount: 5000.0, Date and Time: 2023-10-28 13:26:48
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Close Account
+7. View Last 5 transactions
+8. Exit
+Enter your choice: 8
 Exiting the program. Goodbye!
 
 
