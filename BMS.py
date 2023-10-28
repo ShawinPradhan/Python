@@ -1,4 +1,5 @@
 import mysql.connector
+from mysql.connector import IntegrityError  # Import IntegrityError
 
 # Connect to MySQL
 conn = mysql.connector.connect(
@@ -8,6 +9,15 @@ conn = mysql.connector.connect(
     database="banking_system"
 )
 cursor = conn.cursor()
+
+# Create a table for account_type
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS account_type (
+        acc_id INT AUTO_INCREMENT PRIMARY KEY,
+        account_type VARCHAR(20) NOT NULL UNIQUE
+    )
+"""
+)
 
 # Create a table for accounts
 cursor.execute("""
@@ -19,80 +29,175 @@ cursor.execute("""
         balance DOUBLE(10, 2) NOT NULL,
         email VARCHAR(64) UNIQUE NOT NULL,
         aadhaar_no VARCHAR(12) UNIQUE NOT NULL,
-        pan_card VARCHAR(10) UNIQUE NOT NULL
+        pan_card VARCHAR(10) UNIQUE NOT NULL,
+        status VARCHAR(10) NOT NULL,
+        acc_id int,
+        foreign key(acc_id) references account_type(acc_id)
     )
 """
 )
 conn.commit()
 
+#custom exception if account is not present in the system
+class CustomerNotFound(Exception):
+    def __init__(self, account_number):
+        self.account_number = account_number
+        super().__init__(f"Customer with account number {account_number} not found! Please contact the manager.")
+
+#custom exception if account balance is insufficient balance
+class InsufficientBalance(Exception):
+    def __init__(self, balance):
+        self.balance = balance
+        super().__init__(f"Account balance is insufficient! Current balance: {balance}")
+
 #function to create account
 def create_account(first_name, last_name, initial_balance, email, aadhaar_no, pan_card):
-    # Generate a unique account number (you can implement this differently)
-    bank_name = "HDFC"
-    account_number = f"{bank_name}{hash(bank_name) % 10000}"
-    # Insert a new account into the database
-    cursor.execute("""
-        INSERT INTO accounts (account_number, first_name, last_name, balance, email, aadhaar_no, pan_card)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (account_number, first_name, last_name, initial_balance, email, aadhaar_no, pan_card))
-    conn.commit()
-    print(f"Account created successfully. Your account number is: {account_number}")
+        # Generate a unique account number
+        bank_name = "HDFC"
+        account_number = f"{bank_name}{hash(bank_name) % 10000}"
+        
+        print("What type of account you want to create?")
+        accType =int(input("Enter: 1) Savings A/C,  2) Current A/C:  "))
+        if accType==1:
+            try:
+                # Insert a new account into the database
+                cursor.execute("""
+                    INSERT INTO accounts (account_number, first_name, last_name, balance,
+                    email, aadhaar_no, pan_card, status, acc_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (account_number, first_name, last_name, initial_balance, email, aadhaar_no, pan_card, "ACTIVE", 1))
+                conn.commit()
+                print(f"Account created successfully. Your account number is: {account_number}")
+
+            except IntegrityError as e:
+                print(f"Error: {e}")
+                print("Account already present!")
+
+            except Exception as e:
+                print(f"Error: {e}")
+                print("An error occurred while creating the account.")
+
+        elif accType==2:
+            try:
+                # Insert a new account into the database
+                cursor.execute("""
+                    INSERT INTO accounts (account_number, first_name, last_name, balance,
+                    email, aadhaar_no, pan_card, status, acc_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (account_number, first_name, last_name, initial_balance, email, aadhaar_no, pan_card,"ACTIVE", 2))
+                conn.commit()
+                print(f"Account created successfully. Your account number is: {account_number}")
+
+            except IntegrityError as e:
+                print(f"Error: {e}")
+                print("Account already present!")
+
+            except Exception as e:
+                print(f"Error: {e}")
+                print("An error occurred while creating the account.")
+
+        else:
+            print("Wrong Choice!!")
+
+   
 
 #function to deposit amount into the account
-def deposit(account_number, amount):
-    # Update the balance by depositing money into the account
+def deposit(account_number):
     cursor.execute("""
-        UPDATE accounts
-        SET balance = balance + %s
-        WHERE account_number = %s
-    """, (amount, account_number))
-    conn.commit()
-    print("Deposit successful!")
-
-    # Retrieve and display the updated account balance
-    cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
-    balance = cursor.fetchone()[0]
-    print(f"Updated account balance: Rs.{balance:.2f}")
-
-#function to withdraw amount from the account
-def withdraw(account_number, amount):
-    # Check if there's enough balance before withdrawing
-    cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
-    balance = cursor.fetchone()[0]
-    if balance >= amount:
-        cursor.execute("""
-            UPDATE accounts
-            SET balance = balance - %s
-            WHERE account_number = %s
-        """, (amount, account_number))
-        conn.commit()
-        print("Withdrawal successful!")
-    else:
-        print("Insufficient balance!")
-
-    # Retrieve and display the updated account balance
-    cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
-    balance = cursor.fetchone()[0]
-    print(f"Updated account balance: Rs.{balance:.2f}")
-
-#function to display account balance
-def display_balance(account_number):
-    # Retrieve and display the account balance
-    cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
-    balance = cursor.fetchone()[0]
-    print(f"Account balance: Rs.{balance:.2f}")
-
-# function to display account details
-def account_details(account_number):
-    # Retrieve all the details from the database
-    cursor.execute("""
-        SELECT account_number, first_name, last_name, balance, email, aadhaar_no, pan_card
-        FROM accounts
-        WHERE account_number = %s
+        SELECT *
+        FROM accountS
+        WHERE account_number = %s and status = 'ACTIVE'
     """, (account_number,))
     account = cursor.fetchone()
     if account:
-        account_number, first_name, last_name, balance, email, aadhaar_no, pan_card = account
+        amount = float(input("Enter deposit amount: "))
+        # Update the balance by depositing money into the account
+        cursor.execute("""
+            UPDATE accounts
+            SET balance = balance + %s
+            WHERE account_number = %s
+        """, (amount, account_number))
+        conn.commit()
+        print("Deposit successful!")
+        
+        # Retrieve and display the updated account balance
+        cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
+        balance = cursor.fetchone()[0]
+        print(f"Updated account balance: Rs.{balance:.2f}")
+
+    else:
+        raise CustomerNotFound(account_number) 
+
+    
+
+#function to withdraw amount from the account
+def withdraw(account_number):
+    cursor.execute("""
+        SELECT *
+        FROM accountS
+        WHERE account_number = %s and status = 'ACTIVE'
+    """, (account_number,))
+    account = cursor.fetchone()
+    if account:
+        amount = float(input("Enter withdrawal amount: "))
+        # Check if there's enough balance before withdrawing
+        cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
+        balance = cursor.fetchone()[0]
+        if balance >= amount:
+            cursor.execute("""
+                UPDATE accounts
+                SET balance = balance - %s
+                WHERE account_number = %s
+            """, (amount, account_number))
+            conn.commit()
+            print("Withdrawal successful!")
+            
+            # Retrieve and display the updated account balance
+            cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
+            balance = cursor.fetchone()[0]
+            print(f"Updated account balance: Rs.{balance:.2f}")
+            
+        else:
+            # Retrieve and display the current account balance
+            cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
+            balance = cursor.fetchone()[0]
+            raise InsufficientBalance(balance)
+
+    else:
+        raise CustomerNotFound(account_number)
+
+    
+
+#function to display account balance
+def display_balance(account_number):
+    cursor.execute("""
+        SELECT *
+        FROM accountS
+        WHERE account_number = %s and status = 'ACTIVE'
+    """, (account_number,))
+    account = cursor.fetchone()
+    if account:
+        # Retrieve and display the account balance
+        cursor.execute("SELECT balance FROM accounts WHERE account_number = %s", (account_number,))
+        balance = cursor.fetchone()[0]
+        print(f"Account balance: Rs.{balance:.2f}")
+
+    else:
+        raise CustomerNotFound(account_number)
+
+# function to display account details
+def account_details(account_number):
+    # Retrieve all the details from the database of a customer
+    cursor.execute("""
+        SELECT a.account_number, a.first_name, a.last_name, a.balance, a.email, a.aadhaar_no, a.pan_card, at.account_type
+        FROM accounts a
+        JOIN account_type at ON a.acc_id = at.acc_id
+        WHERE a.account_number = %s and status = 'ACTIVE'
+    """, (account_number,))
+    account = cursor.fetchone()
+    
+    if account:
+        account_number, first_name, last_name, balance, email, aadhaar_no, pan_card, account_type = account
         print("Account Details:")
         print(f"Account Number: {account_number}")
         print(f"First Name: {first_name}")
@@ -101,8 +206,30 @@ def account_details(account_number):
         print(f"Email: {email}")
         print(f"Aadhaar Number: {aadhaar_no}")
         print(f"PAN Card: {pan_card}")
+        print(f"Account Type: {account_type}")
     else:
-        print("Account not found.")
+        raise CustomerNotFound(account_number)
+
+#function to close the account
+def close_account(account_number):
+    cursor.execute("""
+        SELECT *
+        FROM accounts
+        WHERE account_number = %s and status = 'ACTIVE'
+    """, (account_number,))
+    account = cursor.fetchone()
+    if account:
+        cursor.execute("""
+                UPDATE accounts
+                SET status = 'INACTIVE'
+                WHERE account_number = %s
+            """, (account_number,))
+        conn.commit()
+        print("Account has been closed!")
+
+    else:
+        raise CustomerNotFound(account_number)
+        
 
 # Main program
 while True:
@@ -112,7 +239,8 @@ while True:
     print("3. Withdraw")
     print("4. Check Balance")
     print("5. Account details")
-    print("6. Exit")
+    print("6. Close Account")
+    print("7. Exit")
 
     choice = input("Enter your choice: ")
 
@@ -128,24 +256,32 @@ while True:
             
         except ValueError:
             print("Invalid Input!! Please enter valid details.")
+
             
     elif choice == "2":
         try:
             account_number = input("Enter account number: ")
-            amount = float(input("Enter deposit amount: "))
-            deposit(account_number, amount)
+            deposit(account_number)
             
         except ValueError:
             print("Invalid Input!! Please enter valid details.")
+
+        except CustomerNotFound as e:
+            print(e)
         
     elif choice == "3":
         try:
             account_number = input("Enter account number: ")
-            amount = float(input("Enter withdrawal amount: "))
-            withdraw(account_number, amount)
+            withdraw(account_number)
             
         except ValueError:
             print("Invalid Input!! Please enter valid details.")
+
+        except CustomerNotFound as e:
+            print(e)
+
+        except InsufficientBalance as e:
+            print(e)
         
     elif choice == "4":
         try:
@@ -155,14 +291,33 @@ while True:
         except ValueError:
             print("Invalid Input!! Please enter valid details.")
 
+        except CustomerNotFound as e:
+            print(e)
+
     elif choice == "5":
         try:
             account_number = input("Enter account number: ")
             account_details(account_number)
+            
         except ValueError:
             print("Invalid Input!! Please enter a valid account number.")
-        
+            
+        except CustomerNotFound as e:
+            print(e)
+
     elif choice == "6":
+        try:
+            account_number = input("Enter account number: ")
+            close_account(account_number)
+            
+        except ValueError:
+            print("Invalid Input!! Please enter a valid account number.")
+            
+        except CustomerNotFound as e:
+            print(e)
+            
+    
+    elif choice == "7":
         print("Exiting the program. Goodbye!")
         break
     
@@ -176,22 +331,24 @@ conn.close()
 '''
 OUTPUT:
 
-
 Banking Management System
 1. Create Account
 2. Deposit
 3. Withdraw
 4. Check Balance
 5. Account details
-6. Exit
+6. Close Account
+7. Exit
 Enter your choice: 1
-Enter account holder's first name: John
-Enter account holder's last name: Doe
-Enter initial balance: 25000
-Enter email address: john@gmail.com
-Enter aadhaar no.: 568947125360
-Enter pan card no.: EJFL564892
-Account created successfully. Your account number is: HDFC4211
+Enter account holder's first name: Dipankar
+Enter account holder's last name: Das
+Enter initial balance: 50000
+Enter email address: dip@gmail.com
+Enter aadhaar no.: 564123456789
+Enter pan card no.: EJFP456210
+What type of account you want to create?
+Enter: 1) Savings A/C,  2) Current A/C:  1
+Account created successfully. Your account number is: HDFC2282
 
 Banking Management System
 1. Create Account
@@ -199,12 +356,19 @@ Banking Management System
 3. Withdraw
 4. Check Balance
 5. Account details
-6. Exit
-Enter your choice: 2
-Enter account number: HDFC4211
-Enter deposit amount: 5000
-Deposit successful!
-Updated account balance: Rs.30000.00
+6. Close Account
+7. Exit
+Enter your choice: 1
+Enter account holder's first name: Dip
+Enter account holder's last name: Das
+Enter initial balance: 5000
+Enter email address: dip@gmail.com
+Enter aadhaar no.: 456123457893
+Enter pan card no.: EJFK124569
+What type of account you want to create?
+Enter: 1) Savings A/C,  2) Current A/C:  1
+Error: 1062 (23000): Duplicate entry 'dip@gmail.com' for key 'accounts.email'
+Account already present!
 
 Banking Management System
 1. Create Account
@@ -212,50 +376,9 @@ Banking Management System
 3. Withdraw
 4. Check Balance
 5. Account details
-6. Exit
-Enter your choice: 3
-Enter account number: HDFC4211
-Enter withdrawal amount: 3000
-Withdrawal successful!
-Updated account balance: Rs.27000.00
-
-Banking Management System
-1. Create Account
-2. Deposit
-3. Withdraw
-4. Check Balance
-5. Account details
-6. Exit
-Enter your choice: 4
-Enter account number: HDFC4211
-Account balance: Rs.27000.00
-
-Banking Management System
-1. Create Account
-2. Deposit
-3. Withdraw
-4. Check Balance
-5. Account details
-6. Exit
-Enter your choice: 5
-Enter account number: HDFC4211
-Account Details:
-Account Number: HDFC4211
-First Name: John
-Last Name: Doe
-Balance: Rs.27000.00
-Email: john@gmail.com
-Aadhaar Number: 568947125360
-PAN Card: EJFL564892
-
-Banking Management System
-1. Create Account
-2. Deposit
-3. Withdraw
-4. Check Balance
-5. Account details
-6. Exit
-Enter your choice: 7
+6. Close Account
+7. Exit
+Enter your choice: HDFC2282
 Invalid choice. Please try again.
 
 Banking Management System
@@ -264,11 +387,13 @@ Banking Management System
 3. Withdraw
 4. Check Balance
 5. Account details
-6. Exit
+6. Close Account
+7. Exit
 Enter your choice: 2
-Enter account number: HDFC4211
-Enter deposit amount: as
-Invalid Input!! Please enter valid details.
+Enter account number: HDFC2282
+Enter deposit amount: 5000
+Deposit successful!
+Updated account balance: Rs.55000.00
 
 Banking Management System
 1. Create Account
@@ -276,8 +401,92 @@ Banking Management System
 3. Withdraw
 4. Check Balance
 5. Account details
-6. Exit
+6. Close Account
+7. Exit
+Enter your choice: 4
+Enter account number: HDFC2282
+Account balance: Rs.55000.00
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Close Account
+7. Exit
+Enter your choice: 3
+Enter account number: HDFC2282
+Enter withdrawal amount: 60000
+Account balance is insufficient! Current balance: 55000.0
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Close Account
+7. Exit
+Enter your choice: 3
+Enter account number: HDFC2282
+Enter withdrawal amount: 4000
+Withdrawal successful!
+Updated account balance: Rs.51000.00
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Close Account
+7. Exit
+Enter your choice: 5
+Enter account number: HDFC2282
+Account Details:
+Account Number: HDFC2282
+First Name: Dipankar
+Last Name: Das
+Balance: Rs.51000.00
+Email: dip@gmail.com
+Aadhaar Number: 564123456789
+PAN Card: EJFP456210
+Account Type: Savings
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Close Account
+7. Exit
 Enter your choice: 6
+Enter account number: HDFC2282
+Account has been closed!
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Close Account
+7. Exit
+Enter your choice: 2
+Enter account number: HDFC2282
+Customer with account number HDFC2282 not found! Please contact the manager.
+
+Banking Management System
+1. Create Account
+2. Deposit
+3. Withdraw
+4. Check Balance
+5. Account details
+6. Close Account
+7. Exit
+Enter your choice: 7
 Exiting the program. Goodbye!
 
 
