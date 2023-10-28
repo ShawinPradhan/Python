@@ -1,5 +1,6 @@
 import mysql.connector
 from mysql.connector import IntegrityError  # Import IntegrityError
+import random
 
 # Connect to MySQL
 conn = mysql.connector.connect(
@@ -54,7 +55,9 @@ class InsufficientBalance(Exception):
 def create_account(first_name, last_name, initial_balance, email, aadhaar_no, pan_card):
         # Generate a unique account number
         bank_name = "HDFC"
-        account_number = f"{bank_name}{hash(bank_name) % 10000}"
+        # account_number = f"{bank_name}{hash(bank_name) % 10000}"
+        number = ''.join(str(random.randint(0, 9)) for _ in range(5))
+        account_number = bank_name+number
         
         print("What type of account you want to create?")
         accType =int(input("Enter: 1) Savings A/C,  2) Current A/C:  "))
